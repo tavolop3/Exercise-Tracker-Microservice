@@ -41,7 +41,7 @@ let exerciseSchema = new Schema({
     required:true
   },
   date:{
-    type:String,
+    type:Date,
     required:true
   }
 });
@@ -64,20 +64,20 @@ app.post('/api/users/:_id/exercises', (req,res) => {
   console.log('req date:'+req.body.date);
   let date = req.body.date;
   if(!date)
-    date = new Date().toDateString();
+    date = new Date();
   else{
     date = date.replaceAll('-','/');
-    date = new Date(date).toDateString();
+    date = new Date(date);
   }
   console.log('final date: '+date);
   console.log('sig')
   userModel.findById(userId,(err,data) => {
     if(err) return console.error(err);
     let username = data.username;
-    let exerciseObj = {'userId':userId,'username':username,'date':date,'duration':duration,'description':description};
+    let exerciseObj = {'userId':userId,'username':username,'date':date.toDateString(),'duration':duration,'description':description};
     exerciseModel.create(exerciseObj, (er,dat) =>{
       if(er) return console.error(er);
-      res.json({'_id':userId,'username':username,'date':date,'duration':duration,'description':description});
+      res.json({'_id':userId,'username':username,'date':date.toDateString(),'duration':duration,'description':description});
       console.log('Exercise created');
     });
   });
@@ -93,7 +93,7 @@ app.get('/api/users', (req,res) => {
 function fixDate(date){
   if(date){
     date = date.replaceAll('-','/');
-    date = new Date(date).toDateString();
+    date = new Date(date);
   }
   return date;
 }
@@ -106,30 +106,22 @@ app.get('/api/users/:_id/logs',(req,res) => {
   if(!limit)
     limit = 0;
   let condition = {'userId':userId};
-  console.log(from,to);
   if(from && to){
     condition['$gte'] = from;
     condition['$lte'] = to;
   }else{
     condition = {'userId':userId}
   }
-  console.log(condition)
-  console.log('limit='+limit)
-  exerciseModel.find(condition).limit(limit).exec((err,data) => {
+  exerciseModel.find(condition).limit(limit).lean().exec((err,data) => {
     if(err) return console.error(err);
+    data.map(obj => {
+      obj.date = obj.date.toDateString();
+    })
+    console.log(data)
     res.json({'_id':userId,'username':data[0].username,'count':data.length,'log':data});
     console.log('Data returned');
   });
 });
-
-/*app.get('/api/users/:_id/logs',(req,res) => {
-  let userId = req.params._id;
-  exerciseModel.find({'userId':userId},(err,data) => {
-    if(err) return console.error(err);
-    res.json({'_id':userId,'username':data[0].username,'count':data.length,'log':data});
-    Console.log('Data returned');
-  });
-});*/
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
